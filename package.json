@@ -1,0 +1,30 @@
+{
+  "name": "dynamodb-migrate",
+  "version": "1.0.0",
+  "description": "Migration framework for dynamodb",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arvindkumarc/dynamodb-migrate.git"
+  },
+  "keywords": [
+    "dynamodb",
+    "migration"
+  ],
+  "author": "Arvind Chinniah <arvindkumar.c@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arvindkumarc/dynamodb-migrate/issues"
+  },
+  "homepage": "https://github.com/arvindkumarc/dynamodb-migrate#readme",
+  "dependencies": {
+    "aws-sdk": "^2.1.45"
+  },
+  "devDependencies": {
+    "chai": "^3.2.0",
+    "mocha": "^2.2.5"
+  }
+}
