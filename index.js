@@ -1,5 +1,8 @@
 var AWS = require('aws-sdk'),
+  attr = require('dynamodb-data-types').AttributeValue,
   fs = require('fs');
+
+var DYNAMO_MIGRATIONS_TABLE_NAME = 'dynamo_migrations';
 
 module.exports = {
   migrate: function(callback) {
@@ -15,27 +18,96 @@ module.exports = {
           throw err;
         }
 
-        files.forEach(function(filename) {
-          var fileLocation =  "./dynamo-migrations/" + filename;
-          var migration = require(fileLocation);
-          if (typeof migration.migrate === 'function') {
-            migration.migrate(dynamodb);
-          } else {
-            console.error("'migrate' function not found.");
-            throw new Error("'migrate' function not found in: ", fileLocation);
-          }
-        });
-
-        if (typeof callback === 'function') {
-          callback();
-        }
+        executeMigrations(dynamodb, files, callback);
       });
     });
   }
 }
 
+var executeMigrations = function(dynamodb, files, callback) {
+  var filename = files[0];
+  var fileLocation =  "./dynamo-migrations/" + filename;
+  var migration = require(fileLocation);
+  if (typeof migration.migrate === 'function') {
+    var executeNext = function(dynamodb, files, callback) {
+
+      if (files.length == 1) {
+        if (typeof callback === 'function') {
+          callback();
+        }
+      } else {
+        var filtered = files.slice(1, files.length);
+        executeMigrations(dynamodb, filtered, callback);
+      }
+    }
+
+    checkIfMigrationAlreadyRan(dynamodb, filename, function(err) {
+      if (err) {
+        throw err;
+      }
+
+      console.log('running migration: ', fileLocation);
+      migration.migrate(dynamodb, function(err) {
+        if (err) {
+          throw err;
+        }
+
+        saveMigrationInformation(dynamodb, filename, function(err) {
+          executeNext(dynamodb, files, callback);
+        });
+      });
+    }, function() {
+      executeNext(dynamodb, files, callback);
+    });
+  } else {
+    console.error("'migrate' function not found.", fileLocation);
+    throw new Error("'migrate' function not found in: ", fileLocation);
+  }
+}
+
+var checkIfMigrationAlreadyRan = function(dynamodb, filename, callback, skipCallback) {
+  var params = {
+    TableName: DYNAMO_MIGRATIONS_TABLE_NAME,
+    IndexName: 'name_index',
+    KeyConditions: {
+      'name': {
+        AttributeValueList: [{'S': filename}],
+        ComparisonOperator: 'EQ'
+      }
+    }
+  };
+
+  dynamodb.query(params, function(err, data) {
+    if (err) {
+      callback(err);
+    }
+
+    if (data.Items.length > 0) {
+      skipCallback();
+    } else {
+      callback(null, null);
+    }
+  });
+}
+
+var saveMigrationInformation = function(dynamodb, filename, callback) {
+  dynamodb.describeTable({TableName:DYNAMO_MIGRATIONS_TABLE_NAME}, function(err, data) {
+    dynamodb.putItem({
+      Item: attr.wrap({
+        id: data.Table.ItemCount + 1,
+        name: filename,
+        status: 'success',
+        createdat: new Date().toISOString()
+      }),
+      TableName: DYNAMO_MIGRATIONS_TABLE_NAME
+    }, function(err, data) {
+      callback(err);
+    });
+  });
+}
+
 var checkAndCreateMigrationTable = function(dynamodb, callback) {
-  dynamodb.describeTable({TableName: 'dynamo_migrations'}, function(err, data) {
+  dynamodb.describeTable({TableName: DYNAMO_MIGRATIONS_TABLE_NAME}, function(err, data) {
     if (err != null && err.code == 'ResourceNotFoundException') {
       var migTable = {
         AttributeDefinitions: [
@@ -52,22 +124,21 @@ var checkAndCreateMigrationTable = function(dynamodb, callback) {
             { AttributeName: 'id', KeyType: 'HASH' }
           ],
           ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 },
-          // FIXME: 'dynamo_migrations' tablename should be customizable.
-          TableName: 'dynamo_migrations'
+          // FIXME: DYNAMO_MIGRATIONS_TABLE_NAME tablename should be customizable.
+          TableName: DYNAMO_MIGRATIONS_TABLE_NAME
       };
+
+      console.log('creating migration table.')
 
       dynamodb.createTable(migTable, function(error, data) {
         if (error) {
-            console.log("Migration table creation error: ", error, error.stack);
-            throw new Error("failed to create migrations table");
-          } else {
-            console.log("Migrations Table Created!");
-          }
-
-          callback(error);
+          console.log("Migration table creation error: ", error);
+          throw new Error("failed to create migrations table");
+        }
+        callback();
       });
+    } else {
+      callback();
     }
-
-    callback(null);
   });
 }

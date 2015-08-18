@@ -2,4 +2,4 @@
 Migration framework for dynamodb
 
 ## Setup
-initialize AWS_DYNAMODB_ENDPOINT with the corresponding DynamoDB endpoint. Set it to `http://localhost:8000` for local dynamodb.
+Assign AWS_DYNAMODB_ENDPOINT with DynamoDB url. For local, set `http://localhost:8000`

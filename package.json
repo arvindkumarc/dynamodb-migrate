@@ -18,7 +18,11 @@
   },
   "homepage": "https://github.com/arvindkumarc/dynamodb-migrate#readme",
   "dependencies": {
-    "aws-sdk": "^2.1.45"
+    "aws-sdk": "^2.1.45",
+    "dynamodb-data-types": "^2.1.0"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --reporter spec"
   },
   "devDependencies": {
     "chai": "^3.2.0",
