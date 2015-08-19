@@ -1,6 +1,6 @@
 {
   "name": "dynamodb-migrate",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Migration framework for dynamodb",
   "main": "index.js",
   "repository": {

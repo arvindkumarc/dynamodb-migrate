@@ -2,8 +2,6 @@ var AWS = require('aws-sdk'),
   attr = require('dynamodb-data-types').AttributeValue,
   fs = require('fs');
 
-var DYNAMO_MIGRATIONS_TABLE_NAME = 'dynamo_migrations';
-
 module.exports = {
   migrate: function(callback) {
     var migrationLocation = process.env.PWD + "/dynamo-migrations";
@@ -67,7 +65,7 @@ var executeMigrations = function(dynamodb, files, callback) {
 
 var checkIfMigrationAlreadyRan = function(dynamodb, filename, callback, skipCallback) {
   var params = {
-    TableName: DYNAMO_MIGRATIONS_TABLE_NAME,
+    TableName: process.env.DYNAMO_MIGRATIONS_TABLENAME,
     IndexName: 'name_index',
     KeyConditions: {
       'name': {
@@ -91,7 +89,7 @@ var checkIfMigrationAlreadyRan = function(dynamodb, filename, callback, skipCall
 }
 
 var saveMigrationInformation = function(dynamodb, filename, callback) {
-  dynamodb.describeTable({TableName:DYNAMO_MIGRATIONS_TABLE_NAME}, function(err, data) {
+  dynamodb.describeTable({TableName:process.env.DYNAMO_MIGRATIONS_TABLENAME}, function(err, data) {
     dynamodb.putItem({
       Item: attr.wrap({
         id: data.Table.ItemCount + 1,
@@ -99,7 +97,7 @@ var saveMigrationInformation = function(dynamodb, filename, callback) {
         status: 'success',
         createdat: new Date().toISOString()
       }),
-      TableName: DYNAMO_MIGRATIONS_TABLE_NAME
+      TableName: process.env.DYNAMO_MIGRATIONS_TABLENAME
     }, function(err, data) {
       callback(err);
     });
@@ -107,7 +105,7 @@ var saveMigrationInformation = function(dynamodb, filename, callback) {
 }
 
 var checkAndCreateMigrationTable = function(dynamodb, callback) {
-  dynamodb.describeTable({TableName: DYNAMO_MIGRATIONS_TABLE_NAME}, function(err, data) {
+  dynamodb.describeTable({TableName: process.env.DYNAMO_MIGRATIONS_TABLENAME}, function(err, data) {
     if (err != null && err.code == 'ResourceNotFoundException') {
       var migTable = {
         AttributeDefinitions: [
@@ -124,8 +122,7 @@ var checkAndCreateMigrationTable = function(dynamodb, callback) {
             { AttributeName: 'id', KeyType: 'HASH' }
           ],
           ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 },
-          // FIXME: DYNAMO_MIGRATIONS_TABLE_NAME tablename should be customizable.
-          TableName: DYNAMO_MIGRATIONS_TABLE_NAME
+          TableName: process.env.DYNAMO_MIGRATIONS_TABLENAME
       };
 
       console.log('creating migration table.')
