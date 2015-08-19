@@ -26,7 +26,7 @@ module.exports = {
 
 var executeMigrations = function(dynamodb, files, callback) {
   var filename = files[0];
-  var fileLocation =  "./dynamo-migrations/" + filename;
+  var fileLocation =  process.env.PWD + "/dynamo-migrations/" + filename;
   var migration = require(fileLocation);
   if (typeof migration.migrate === 'function') {
     var executeNext = function(dynamodb, files, callback) {
